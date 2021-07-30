@@ -17,7 +17,11 @@ const UserSchema = Schema({
      },
      role: {
           type: String,
+          default: 'USER_ROLE',
           required: [true, 'The role is required']
+     },
+     img: {
+          type: String
      },
      google: {
           type: Boolean,

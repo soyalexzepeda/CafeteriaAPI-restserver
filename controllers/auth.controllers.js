@@ -7,6 +7,7 @@ const User = require('../models/user.model');
 
 // Helpers
 const { generateJWT } = require('../helpers/generate-jwt');
+const { validateGoogle } = require('../helpers/validate-google');
 
 const login = async ( req = request, res = response ) => {
 
@@ -33,17 +34,70 @@ const login = async ( req = request, res = response ) => {
           // Generate jsonwebtoken
           const token = await generateJWT( user.id );
 
-          res.json({
+          res.status(200).json({
                user,
                token
           });
+
      } catch (error) {
           res.status(500).json({
-               message: 'Internal several error'
+               message: 'Internal Several Error'
+          });
+     }
+}
+
+const google = async ( req = request, res = response ) => {
+
+     const { id_token } = req.body;
+
+     try {
+          
+          const { name, email, img } = await validateGoogle( id_token );
+          
+          let user = await User.findOne({ email });
+
+          if( !user ) {
+               const data = {
+                    name,
+                    email,
+                    password: process.env.PASS,
+                    img,
+                    google: true
+               }
+          
+               const { password } = data;
+               user = new User( data );
+
+               // Encrypt password
+               const salt = bcryptjs.genSaltSync();
+               user.password = bcryptjs.hashSync( password, salt );
+
+               await user.save();
+          }
+
+          // When the user it's blocked
+          if ( !user.status ) return res.status(401).json({
+               message: 'The user is blocked, you should to talk with your administrator'
+          });
+
+          // Generate jsonwebtoken
+          const token = await generateJWT( user.id ); 
+
+          res.status(200).json({
+               message: 'Google user sing in successfully',
+               user,
+               token
+          });
+     
+          
+     } catch (error) {
+          res.status(401).json({
+               message: 'The google token not is valid'
           });
      }
 }
 
 module.exports = {
-     login
+     login,
+     google
 }
